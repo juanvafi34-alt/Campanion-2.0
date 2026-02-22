@@ -1,0 +1,13 @@
+{
+  "name": "campanion-server",
+  "version": "1.0.0",
+  "description": "Real-time private room chat",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  }
+}
