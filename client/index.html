@@ -5,17 +5,10 @@
   <title>Campanion 2.0</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background:#0A1A2F;
-      color:#F0F4F8;
-      margin:0;
-      display:flex;
-      justify-content:center;
-    }
+    body { font-family: Arial, sans-serif; background:#0A1A2F; color:#F0F4F8; margin:0; display:flex; justify-content:center; }
     .wrap { width: 92%; max-width: 900px; margin: 24px auto; }
     .card { background:#102A43; border:1px solid #1C3A57; border-radius:12px; padding:16px; }
-    input, button { padding:10px; border-radius:8px; border:1px solid #1C3A57; background:#1C3A57; color:#F0F4F8; }
+    input, button, textarea { padding:10px; border-radius:8px; border:1px solid #1C3A57; background:#1C3A57; color:#F0F4F8; }
     button { background:#1FA97B; border:none; cursor:pointer; }
     .row { display:flex; gap:10px; flex-wrap:wrap; }
     .row > * { flex: 1; min-width: 180px; }
@@ -42,9 +35,12 @@
     .section { display: none; }
     .section.active { display: block; }
 
-    /* Small About styling */
-    .about p { line-height: 1.6; }
-    .about a { color:#9ff5d8; }
+    /* Admin list */
+    #roomList { list-style:none; padding:0; margin: 8px 0 0; border: 1px solid #1C3A57; border-radius: 10px; overflow:hidden; }
+    #roomList li { display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #1C3A57; }
+    #roomList li:last-child { border-bottom:none; }
+    .danger { background:#d9534f; }
+    .small { padding:8px 10px; border-radius:8px; }
   </style>
 </head>
 
@@ -59,11 +55,45 @@
 
     <!-- CHAT TAB -->
     <div id="sectionChat" class="section active">
+
+      <!-- ADMIN PANEL -->
+      <div class="card" id="adminCard" style="margin-bottom:14px;">
+        <h3 style="margin-top:0;">Admin (Add / Remove Rooms)</h3>
+
+        <div class="row">
+          <div>
+            <label class="muted">Admin token</label><br/>
+            <input id="adminToken" type="password" placeholder="Enter admin token..." />
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button id="adminUnlockBtn" type="button">Unlock</button>
+          </div>
+        </div>
+
+        <div id="adminPanel" style="display:none; margin-top:12px;">
+          <div class="row">
+            <div>
+              <label class="muted">New room code</label><br/>
+              <input id="newRoomCode" type="text" placeholder="FAMILY2026" />
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button id="addRoomBtn" type="button">Add room</button>
+            </div>
+          </div>
+
+          <div class="muted" style="margin-top:10px;">Allowed rooms (click delete):</div>
+          <ul id="roomList"></ul>
+        </div>
+
+        <div id="adminStatus" class="err" style="display:none;"></div>
+      </div>
+
+      <!-- JOIN -->
       <div class="card" id="joinCard">
         <div class="row">
           <div>
             <label class="muted">Your name</label><br/>
-            <input id="name" type="text" placeholder="Juan" />
+            <input id="name" type="text" placeholder="Eliana" />
           </div>
           <div>
             <label class="muted">Room code</label><br/>
@@ -74,15 +104,15 @@
           </div>
         </div>
         <div class="muted" style="margin-top:10px;">
-          Try codes: <b>PINE123</b>, <b>LAKE777</b>, <b>CAMP999</b>
+          Join only works for codes that exist on the server.
         </div>
         <div id="status" class="err" style="display:none;"></div>
       </div>
 
+      <!-- CHAT -->
       <div class="card" id="chatUI">
         <div class="muted" id="roomLabel"></div>
         <ul id="messages"></ul>
-
         <form id="chatForm">
           <input id="msg" type="text" placeholder="Type a message..." autocomplete="off" />
           <button type="submit">Send</button>
@@ -92,33 +122,32 @@
 
     <!-- ABOUT TAB -->
     <div id="sectionAbout" class="section">
-      <div class="card about">
+      <div class="card">
         <h3>About Us</h3>
         <p class="muted">Hi! I’m Juan Vasquez, the creator of Campanion.</p>
-
         <p>
           Campanion was created to give people the chance to get to know other people when they go camping —
           meet people on the campsite, share updates, and talk in private rooms with a simple code.
         </p>
-
         <p>
           This is Campanion 2.0. It’s still in development and there are more features on the way.
         </p>
-
         <p class="muted">
           Want to give feedback or contact us? Email:
-          <a href="mailto:juan_vasqu982@ahschools.us">juan_vasqu982@ahschools.us</a>
+          <a href="mailto:juan_vasqu982@ahschools.us" style="color:#9ff5d8;">juan_vasqu982@ahschools.us</a>
         </p>
       </div>
     </div>
+
   </div>
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script>
-    console.log("Loaded NEW version with tabs ✅");
+    // ✅ IMPORTANT: set your Render base URL here
+    const API_BASE = "http://localhost:3000";
 
-    // Connect to your Render server
-    const socket = io("https://campanion-2-0-1.onrender.com");
+    // Socket connect
+    const socket = io(API_BASE);
 
     // Tabs
     const tabChat = document.getElementById("tabChat");
@@ -151,7 +180,6 @@
       statusEl.className = ok ? "ok" : "err";
       statusEl.textContent = text;
     }
-
     function addLine(text, muted=false) {
       const li = document.createElement("li");
       li.textContent = text;
@@ -163,15 +191,13 @@
     joinBtn.addEventListener("click", () => {
       const name = document.getElementById("name").value.trim() || "Anonymous";
       const code = document.getElementById("code").value.trim().toUpperCase();
-
       if (!code) return setStatus("Enter a room code.");
       statusEl.style.display = "none";
-
       socket.emit("joinRoom", { name, code });
     });
 
     socket.on("invalidRoom", () => {
-      setStatus("Invalid room code. Try PINE123 / LAKE777 / CAMP999");
+      setStatus("Invalid room code (not created on server). Ask admin to create it.");
     });
 
     socket.on("joined", (code) => {
@@ -182,10 +208,7 @@
     });
 
     socket.on("system", (text) => addLine("• " + text, true));
-
-    socket.on("chat", ({ name, text }) => {
-      addLine(name + ": " + text);
-    });
+    socket.on("chat", ({ name, text }) => addLine(name + ": " + text));
 
     chatForm.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -193,6 +216,89 @@
       if (!text) return;
       socket.emit("chat", text);
       msgInput.value = "";
+    });
+
+    // ---------------- ADMIN UI ----------------
+    let adminTokenValue = "";
+
+    const adminToken = document.getElementById("adminToken");
+    const adminUnlockBtn = document.getElementById("adminUnlockBtn");
+    const adminPanel = document.getElementById("adminPanel");
+    const adminStatus = document.getElementById("adminStatus");
+    const newRoomCode = document.getElementById("newRoomCode");
+    const addRoomBtn = document.getElementById("addRoomBtn");
+    const roomList = document.getElementById("roomList");
+
+    function setAdminStatus(text, ok=false) {
+      adminStatus.style.display = "block";
+      adminStatus.className = ok ? "ok" : "err";
+      adminStatus.textContent = text;
+    }
+
+    async function fetchRooms() {
+      const res = await fetch(`${API_BASE}/admin/rooms`, {
+        headers: { "x-admin-token": adminTokenValue }
+      });
+      if (!res.ok) throw new Error("Unauthorized");
+      const data = await res.json();
+
+      roomList.innerHTML = "";
+      data.rooms.forEach(code => {
+        const li = document.createElement("li");
+
+        const left = document.createElement("span");
+        left.textContent = code;
+
+        const del = document.createElement("button");
+        del.type = "button";
+        del.textContent = "Delete";
+        del.className = "danger small";
+
+        del.onclick = async () => {
+          await fetch(`${API_BASE}/admin/rooms/${encodeURIComponent(code)}`, {
+            method: "DELETE",
+            headers: { "x-admin-token": adminTokenValue }
+          });
+          fetchRooms();
+        };
+
+        li.appendChild(left);
+        li.appendChild(del);
+        roomList.appendChild(li);
+      });
+    }
+
+    adminUnlockBtn.addEventListener("click", async () => {
+      adminTokenValue = adminToken.value.trim();
+      adminStatus.style.display = "none";
+
+      try {
+        await fetchRooms();
+        adminPanel.style.display = "block";
+        setAdminStatus("Admin unlocked ✅", true);
+      } catch {
+        adminPanel.style.display = "none";
+        setAdminStatus("Invalid admin token ❌");
+      }
+    });
+
+    addRoomBtn.addEventListener("click", async () => {
+      const code = newRoomCode.value.trim().toUpperCase();
+      if (!code) return setAdminStatus("Enter a room code.");
+
+      const res = await fetch(`${API_BASE}/admin/rooms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-token": adminTokenValue
+        },
+        body: JSON.stringify({ code })
+      });
+
+      if (!res.ok) return setAdminStatus("Could not add room. Check token or code format.");
+      newRoomCode.value = "";
+      setAdminStatus("Room added ✅", true);
+      fetchRooms();
     });
   </script>
 </body>
