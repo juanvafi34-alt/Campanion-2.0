@@ -11,7 +11,10 @@ const server = http.createServer((req, res) => {
 });
 
 const io = new Server(server, {
-  cors: { origin: "*" }
+  cors: {
+    origin: "https://campanion20.netlify.app",
+    methods: ["GET", "POST"]
+  }
 });
 
 const VALID_ROOMS = new Set([
