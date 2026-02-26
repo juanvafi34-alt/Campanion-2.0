@@ -4,32 +4,42 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const app = express();
-app.use(express.json());
 
-// ✅ Keep it simple: allow Netlify + local
+/**
+ * CORS:
+ * - Allow your Netlify site to call Render
+ * - Allow local dev too (optional)
+ */
 const ALLOWED_ORIGINS = new Set([
   "https://campanion20.netlify.app",
-  "https://campanion20.netlify.app/",
   "http://localhost:5173",
   "http://localhost:3000",
 ]);
 
-// Basic CORS for fetch requests (if you ever add API routes later)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+
   if (origin && ALLOWED_ORIGINS.has(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
   }
+
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Max-Age", "86400");
+
+  // Preflight
   if (req.method === "OPTIONS") return res.sendStatus(204);
+
   next();
 });
 
+app.use(express.json());
+
+// Health check
 app.get("/health", (req, res) => res.send("ok"));
 
-// Room codes allowed (from Render ENV ROOM_CODES) or fallback defaults:
+// Allowed room codes
 const allowedRooms = new Set(
   (process.env.ROOM_CODES || "PINE123,LAKE777,CAMP999")
     .split(",")
@@ -39,15 +49,9 @@ const allowedRooms = new Set(
 
 const server = http.createServer(app);
 
-// ✅ Socket.IO CORS (this is what matters for your chat)
 const io = new Server(server, {
   cors: {
-    origin: (origin, callback) => {
-      // allow server-to-server or no-origin requests
-      if (!origin) return callback(null, true);
-      if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
-      return callback(new Error("CORS blocked: " + origin), false);
-    },
+    origin: Array.from(ALLOWED_ORIGINS),
     methods: ["GET", "POST"],
   },
 });
@@ -62,25 +66,12 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // leave previous room if needed
-    if (socket.data.room) socket.leave(socket.data.room);
-
     socket.join(room);
     socket.data.room = room;
     socket.data.name = user;
 
     socket.emit("joined", room);
     socket.to(room).emit("system", `${user} joined the room`);
-  });
-
-  socket.on("leaveRoom", () => {
-    const room = socket.data.room;
-    const name = socket.data.name;
-    if (room) {
-      socket.leave(room);
-      socket.to(room).emit("system", `${name || "Someone"} left the room`);
-    }
-    socket.data.room = "";
   });
 
   socket.on("chat", (text) => {
