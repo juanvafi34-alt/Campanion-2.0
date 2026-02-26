@@ -85,7 +85,7 @@
           </div>
           <div>
             <label class="muted">Room code</label><br/>
-            <input id="code" type="text" placeholder="PINE123" />
+            <input id="code" type="text" placeholder="JUAN123" />
           </div>
           <div style="display:flex; align-items:flex-end;">
             <button id="joinBtn">Join room</button>
@@ -212,7 +212,7 @@
     });
 
     socket.on("invalidRoom", () => {
-      setStatus("Invalid room code. Try PINE123 / LAKE777 / CAMP999");
+      setStatus("Invalid room code. Try BOWMAN123 / WATSON123 / JUAN123");
     });
 
     socket.on("joined", (code) => {
