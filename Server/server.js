@@ -1,15 +1,9 @@
-// Server/server.js
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 
 const app = express();
 
-/**
- * CORS:
- * - Allow your Netlify site to call Render
- * - Allow local dev too (optional)
- */
 const ALLOWED_ORIGINS = new Set([
   "https://campanion20.netlify.app",
   "http://localhost:5173",
@@ -28,7 +22,6 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Max-Age", "86400");
 
-  // Preflight
   if (req.method === "OPTIONS") return res.sendStatus(204);
 
   next();
@@ -36,12 +29,10 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// Health check
 app.get("/health", (req, res) => res.send("ok"));
 
-// Allowed room codes
 const allowedRooms = new Set(
-  (process.env.ROOM_CODES || "PINE123,LAKE777,CAMP999")
+  (process.env.ROOM_CODES || "BOWMAN123,WATSON123,JUAN123")
     .split(",")
     .map((s) => s.trim().toUpperCase())
     .filter(Boolean)
@@ -79,14 +70,31 @@ io.on("connection", (socket) => {
     const name = socket.data.name || "Anonymous";
     if (!room) return;
 
-    const msg = String(text || "").slice(0, 500);
+    const msg = String(text || "").trim().slice(0, 500);
+    if (!msg) return;
+
     io.to(room).emit("chat", { name, text: msg });
+  });
+
+  socket.on("leaveRoom", () => {
+    const room = socket.data.room;
+    const name = socket.data.name;
+
+    if (room) {
+      socket.leave(room);
+      socket.to(room).emit("system", `${name || "Anonymous"} left the room`);
+    }
+
+    socket.data.room = null;
+    socket.data.name = null;
   });
 
   socket.on("disconnect", () => {
     const room = socket.data.room;
     const name = socket.data.name;
-    if (room && name) socket.to(room).emit("system", `${name} left the room`);
+    if (room && name) {
+      socket.to(room).emit("system", `${name} left the room`);
+    }
   });
 });
 
