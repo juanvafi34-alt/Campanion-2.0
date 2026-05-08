@@ -29,14 +29,15 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-app.get("/health", (req, res) => res.send("ok"));
+app.get("/", (req, res) => {
+  res.send("Campanion backend is running ✅");
+});
 
-const allowedRooms = new Set(
-  (process.env.ROOM_CODES || "BOWMAN123,WATSON123,JUAN123")
-    .split(",")
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean)
-);
+app.get("/health", (req, res) => {
+  res.send("ok");
+});
+
+const allowedRooms = new Set(["GENERAL", "TIPS", "MARKET"]);
 
 const server = http.createServer(app);
 
@@ -48,41 +49,50 @@ const io = new Server(server, {
 });
 
 io.on("connection", (socket) => {
-  socket.on("joinRoom", ({ name, code }) => {
-    const room = String(code || "").trim().toUpperCase();
+  socket.on("joinRoom", ({ name, room }) => {
+    const selectedRoom = String(room || "").trim().toUpperCase();
     const user = String(name || "Anonymous").trim().slice(0, 30);
 
-    if (!allowedRooms.has(room)) {
+    if (!allowedRooms.has(selectedRoom)) {
       socket.emit("invalidRoom");
       return;
     }
 
-    socket.join(room);
-    socket.data.room = room;
+    if (socket.data.room) {
+      socket.leave(socket.data.room);
+    }
+
+    socket.join(selectedRoom);
+    socket.data.room = selectedRoom;
     socket.data.name = user;
 
-    socket.emit("joined", room);
-    socket.to(room).emit("system", `${user} joined the room`);
+    socket.emit("joined", selectedRoom);
+    socket.to(selectedRoom).emit("system", `${user} joined the room`);
   });
 
   socket.on("chat", (text) => {
     const room = socket.data.room;
     const name = socket.data.name || "Anonymous";
+
     if (!room) return;
 
     const msg = String(text || "").trim().slice(0, 500);
     if (!msg) return;
 
-    io.to(room).emit("chat", { name, text: msg });
+    io.to(room).emit("chat", {
+      name,
+      text: msg,
+      time: new Date().toISOString(),
+    });
   });
 
   socket.on("leaveRoom", () => {
     const room = socket.data.room;
-    const name = socket.data.name;
+    const name = socket.data.name || "Anonymous";
 
     if (room) {
       socket.leave(room);
-      socket.to(room).emit("system", `${name || "Anonymous"} left the room`);
+      socket.to(room).emit("system", `${name} left the room`);
     }
 
     socket.data.room = null;
@@ -91,8 +101,9 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     const room = socket.data.room;
-    const name = socket.data.name;
-    if (room && name) {
+    const name = socket.data.name || "Anonymous";
+
+    if (room) {
       socket.to(room).emit("system", `${name} left the room`);
     }
   });
