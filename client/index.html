@@ -599,13 +599,20 @@
     });
 
     socket.on("system", (text) => {
-      addLine("• " + text, true);
-    });
+  addLine("• " + text, true);
+});
 
-    socket.on("chat", ({ name, text, isAdmin }) => {
-      const label = isAdmin ? `🛡️ ${name}` : name;
-      addLine(label + ": " + text, false, isAdmin);
-    });
+socket.on("history", (messagesHistory) => {
+  messagesHistory.forEach(({ name, text, isAdmin }) => {
+    const label = isAdmin ? `🛡️ ${name}` : name;
+    addLine(label + ": " + text, false, isAdmin);
+  });
+});
+
+socket.on("chat", ({ name, text, isAdmin }) => {
+  const label = isAdmin ? `🛡️ ${name}` : name;
+  addLine(label + ": " + text, false, isAdmin);
+});
 
     socket.on("adminOnly", (message) => {
       addLine(message, true);
