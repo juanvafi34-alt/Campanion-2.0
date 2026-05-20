@@ -21,7 +21,7 @@
 
     .wrap {
       width: 92%;
-      max-width: 950px;
+      max-width: 1000px;
       margin: 32px auto;
     }
 
@@ -58,6 +58,11 @@
 
     button:hover {
       background: #178f67;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
     }
 
     .tabs button {
@@ -107,9 +112,15 @@
       border-color: #1fa97b;
     }
 
+    .inputGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
     .rooms {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 14px;
       margin-top: 18px;
     }
@@ -120,7 +131,7 @@
       border: 1px solid #dbe4ee;
       text-align: left;
       padding: 18px;
-      min-height: 110px;
+      min-height: 120px;
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
     }
 
@@ -140,6 +151,7 @@
       color: #64748b;
       font-size: 13px;
       font-weight: normal;
+      line-height: 1.4;
     }
 
     #chatUI {
@@ -147,9 +159,22 @@
       margin-top: 16px;
     }
 
+    .chatLayout {
+      display: grid;
+      grid-template-columns: 1fr 250px;
+      gap: 14px;
+    }
+
     #roomLabel {
       font-weight: bold;
       color: #102a43;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    #roomNotice {
+      color: #64748b;
+      font-size: 14px;
       margin-bottom: 12px;
     }
 
@@ -173,10 +198,15 @@
     .bubble {
       padding: 10px 14px;
       border-radius: 16px;
-      max-width: 75%;
+      max-width: 80%;
       background: #1fa97b;
       color: white;
       line-height: 1.4;
+    }
+
+    .adminBubble {
+      background: #102a43;
+      color: white;
     }
 
     .systemBubble {
@@ -224,8 +254,47 @@
       display: none;
     }
 
-    @media (max-width: 700px) {
-      .rooms {
+    .sidePanel h3 {
+      margin-top: 0;
+      color: #102a43;
+    }
+
+    .userItem {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 0;
+      font-size: 14px;
+    }
+
+    .userItem:last-child {
+      border-bottom: none;
+    }
+
+    .kickBtn {
+      background: #dc2626;
+      padding: 7px 10px;
+      font-size: 12px;
+      border-radius: 9px;
+    }
+
+    .kickBtn:hover {
+      background: #b91c1c;
+    }
+
+    .adminNote {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 14px;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 750px) {
+      .rooms,
+      .inputGrid,
+      .chatLayout {
         grid-template-columns: 1fr;
       }
 
@@ -244,7 +313,7 @@
   <div class="wrap">
     <div class="header">
       <h1>💬 Campanion 2.0</h1>
-      <p>Connect with campers, share tips, and chat with the community.</p>
+      <p>Connect with campers, read park updates, and stay informed.</p>
     </div>
 
     <div class="tabs">
@@ -254,40 +323,61 @@
 
     <div id="sectionChat" class="section active">
       <div class="card" id="joinCard">
-        <label>Your name</label>
-        <input id="name" type="text" placeholder="Juan" />
+        <div class="inputGrid">
+          <div>
+            <label>Your name</label>
+            <input id="name" type="text" placeholder="Juan" />
+          </div>
+
+          <div>
+            <label>Park Ranger password</label>
+            <input id="rangerPassword" type="password" placeholder="Admin only" />
+          </div>
+        </div>
 
         <div class="rooms">
           <button class="roomBtn" onclick="joinRoom('GENERAL')">
             <span class="roomTitle">💬 General Chat</span>
-            <span class="roomText">Talk with everyone in the Campanion community.</span>
+            <span class="roomText">
+              Everyone can join and talk with other campers.
+            </span>
           </button>
 
-          <button class="roomBtn" onclick="joinRoom('TIPS')">
-            <span class="roomTitle">🏕️ Camp Tips</span>
-            <span class="roomText">Share advice, campsite updates, and useful tips.</span>
-          </button>
-
-          <button class="roomBtn" onclick="joinRoom('MARKET')">
-            <span class="roomTitle">🛒 Buy & Sell</span>
-            <span class="roomText">Post camping gear, supplies, or helpful items.</span>
+          <button class="roomBtn" onclick="joinRoom('UPDATES')">
+            <span class="roomTitle">📢 Updates/Information</span>
+            <span class="roomText">
+              Everyone can read updates, but only the Park Ranger can post.
+            </span>
           </button>
         </div>
 
         <div id="status" class="err"></div>
       </div>
 
-      <div class="card" id="chatUI">
-        <div id="roomLabel"></div>
+      <div id="chatUI">
+        <div class="chatLayout">
+          <div class="card">
+            <div id="roomLabel"></div>
+            <div id="roomNotice"></div>
 
-        <ul id="messages"></ul>
+            <ul id="messages"></ul>
 
-        <form id="chatForm">
-          <input id="msg" type="text" placeholder="Type a message..." autocomplete="off" />
-          <button type="submit">Send</button>
-        </form>
+            <form id="chatForm">
+              <input id="msg" type="text" placeholder="Type a message..." autocomplete="off" />
+              <button id="sendBtn" type="submit">Send</button>
+            </form>
 
-        <button id="leaveBtn" class="secondary">Leave room</button>
+            <button id="leaveBtn" class="secondary">Leave room</button>
+          </div>
+
+          <div class="card sidePanel">
+            <h3>People in chat</h3>
+            <div id="usersList"></div>
+            <div id="adminNote" class="adminNote">
+              Park Ranger tools appear here after logging in with the admin password.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -301,8 +391,8 @@
 
         <p>
           Campanion was created to help people connect when they go camping.
-          It gives campers a simple way to meet others, share campsite updates,
-          exchange tips, and enjoy the camping experience together.
+          It gives campers a simple way to meet others, read park updates,
+          share information, and enjoy the camping experience together.
         </p>
 
         <p>
@@ -333,11 +423,16 @@
     const chatUI = document.getElementById("chatUI");
     const joinCard = document.getElementById("joinCard");
     const roomLabel = document.getElementById("roomLabel");
+    const roomNotice = document.getElementById("roomNotice");
     const messages = document.getElementById("messages");
     const chatForm = document.getElementById("chatForm");
     const msgInput = document.getElementById("msg");
+    const sendBtn = document.getElementById("sendBtn");
+    const usersList = document.getElementById("usersList");
+    const adminNote = document.getElementById("adminNote");
 
     let currentRoom = "";
+    let currentIsAdmin = false;
 
     function showTab(which) {
       const chatActive = which === "chat";
@@ -360,16 +455,39 @@
 
     function getRoomName(room) {
       if (room === "GENERAL") return "💬 General Chat";
-      if (room === "TIPS") return "🏕️ Camp Tips";
-      if (room === "MARKET") return "🛒 Buy & Sell";
+      if (room === "UPDATES") return "📢 Updates/Information";
       return room;
     }
 
-    function addLine(text, muted = false) {
+    function updateRoomPermissions() {
+      if (currentRoom === "UPDATES" && !currentIsAdmin) {
+        msgInput.disabled = true;
+        sendBtn.disabled = true;
+        msgInput.placeholder = "Only the Park Ranger can post updates here.";
+        roomNotice.textContent = "You can read this room, but only the Park Ranger can post updates.";
+      } else {
+        msgInput.disabled = false;
+        sendBtn.disabled = false;
+        msgInput.placeholder = "Type a message...";
+        roomNotice.textContent = currentIsAdmin
+          ? "You are logged in as Park Ranger."
+          : "";
+      }
+    }
+
+    function addLine(text, muted = false, adminMessage = false) {
       const li = document.createElement("li");
 
       const bubble = document.createElement("div");
-      bubble.className = muted ? "bubble systemBubble" : "bubble";
+
+      if (muted) {
+        bubble.className = "bubble systemBubble";
+      } else if (adminMessage) {
+        bubble.className = "bubble adminBubble";
+      } else {
+        bubble.className = "bubble";
+      }
+
       bubble.textContent = text;
 
       const time = document.createElement("div");
@@ -388,13 +506,51 @@
 
     function joinRoom(room) {
       const name = document.getElementById("name").value.trim() || "Anonymous";
+      const rangerPassword = document.getElementById("rangerPassword").value.trim();
 
       statusEl.style.display = "none";
 
       socket.emit("joinRoom", {
         name,
         room,
+        rangerPassword,
       });
+    }
+
+    function renderUsers(users) {
+      usersList.innerHTML = "";
+
+      if (!users || users.length === 0) {
+        usersList.textContent = "No users yet.";
+        return;
+      }
+
+      users.forEach((user) => {
+        const row = document.createElement("div");
+        row.className = "userItem";
+
+        const name = document.createElement("span");
+        name.textContent = `${user.isAdmin ? "🛡️ " : ""}${user.name}`;
+
+        row.appendChild(name);
+
+        if (currentIsAdmin && !user.isAdmin && user.id !== socket.id) {
+          const kickBtn = document.createElement("button");
+          kickBtn.className = "kickBtn";
+          kickBtn.textContent = "Remove";
+          kickBtn.onclick = () => {
+            socket.emit("kickUser", { socketId: user.id });
+          };
+
+          row.appendChild(kickBtn);
+        }
+
+        usersList.appendChild(row);
+      });
+
+      adminNote.textContent = currentIsAdmin
+        ? "Park Ranger mode is active. You can remove users from this chat."
+        : "Only the Park Ranger can remove users.";
     }
 
     leaveBtn.onclick = () => {
@@ -403,7 +559,9 @@
       socket.emit("leaveRoom");
 
       currentRoom = "";
+      currentIsAdmin = false;
       messages.innerHTML = "";
+      usersList.innerHTML = "";
       chatUI.style.display = "none";
       joinCard.style.display = "block";
       setStatus("Left room.", true);
@@ -417,8 +575,9 @@
       setStatus("Invalid room.");
     });
 
-    socket.on("joined", (room) => {
+    socket.on("joined", ({ room, isAdmin }) => {
       currentRoom = room;
+      currentIsAdmin = isAdmin;
 
       joinCard.style.display = "none";
       chatUI.style.display = "block";
@@ -427,15 +586,39 @@
       messages.innerHTML = "";
 
       addLine("✅ Joined " + getRoomName(room), true);
-      msgInput.focus();
+
+      updateRoomPermissions();
+
+      if (!msgInput.disabled) {
+        msgInput.focus();
+      }
+    });
+
+    socket.on("users", (users) => {
+      renderUsers(users);
     });
 
     socket.on("system", (text) => {
       addLine("• " + text, true);
     });
 
-    socket.on("chat", ({ name, text }) => {
-      addLine(name + ": " + text);
+    socket.on("chat", ({ name, text, isAdmin }) => {
+      const label = isAdmin ? `🛡️ ${name}` : name;
+      addLine(label + ": " + text, false, isAdmin);
+    });
+
+    socket.on("adminOnly", (message) => {
+      addLine(message, true);
+    });
+
+    socket.on("kicked", (message) => {
+      currentRoom = "";
+      currentIsAdmin = false;
+      messages.innerHTML = "";
+      usersList.innerHTML = "";
+      chatUI.style.display = "none";
+      joinCard.style.display = "block";
+      setStatus(message, false);
     });
 
     socket.on("disconnect", () => {
