@@ -40,7 +40,23 @@ app.get("/health", (req, res) => {
 });
 
 const allowedRooms = new Set(["GENERAL", "UPDATES"]);
-
+const roomHistory = {
+  GENERAL: [],
+  UPDATES: [
+    {
+      name: "Park Ranger",
+      text: "1PM - Bear close to the cafeteria - Be careful!",
+      isAdmin: true,
+      time: new Date().toISOString(),
+    },
+    {
+      name: "Park Ranger",
+      text: "2PM - Mr.Bowman spotted near main commons, go give him a high five!",
+      isAdmin: true,
+      time: new Date().toISOString(),
+    },
+  ],
+};
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -112,7 +128,7 @@ io.on("connection", (socket) => {
       room: selectedRoom,
       isAdmin,
     });
-
+    socket.emit("history", roomHistory[selectedRoom] || []);
     socket.to(selectedRoom).emit(
       "system",
       `${isAdmin ? "🛡️ " : ""}${user} joined the room`
@@ -122,10 +138,35 @@ io.on("connection", (socket) => {
   });
 
   socket.on("chat", (text) => {
-    const room = socket.data.room;
-    const name = socket.data.name || "Anonymous";
-    const isAdmin = Boolean(socket.data.isAdmin);
+  const room = socket.data.room;
+  const name = socket.data.name || "Anonymous";
+  const isAdmin = Boolean(socket.data.isAdmin);
 
+  if (!room) return;
+
+  if (room === "UPDATES" && !isAdmin) {
+    socket.emit("adminOnly", "Only the Park Ranger can post in Updates/Information.");
+    return;
+  }
+
+  const msg = String(text || "").trim().slice(0, 500);
+  if (!msg) return;
+
+  const newMessage = {
+    name,
+    text: msg,
+    isAdmin,
+    time: new Date().toISOString(),
+  };
+
+  if (roomHistory[room]) {
+    roomHistory[room].push(newMessage);
+    roomHistory[room] = roomHistory[room].slice(-20);
+  }
+
+  io.to(room).emit("chat", newMessage);
+});
+     
     if (!room) return;
 
     if (room === "UPDATES" && !isAdmin) {
@@ -193,7 +234,7 @@ io.on("connection", (socket) => {
       emitUsers(room);
     }
   });
-});
+
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log("Server running on port", PORT));
